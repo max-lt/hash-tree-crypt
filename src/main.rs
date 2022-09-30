@@ -1,12 +1,18 @@
 mod tree;
+mod hasher;
 
 use tree::HTree;
+use hasher::hash;
 
 fn main() {
   println!("Hello, world!");
-  let mut tree: HTree = HTree::create(16, 0, 0);
 
-  println!("{:?}", tree);
+  let password = "hello world";
+  let seed = hash(password.as_bytes());
+
+  let mut tree: HTree = HTree::create(16, 0, seed);
+
+//   println!("{:#?}", tree);
   println!("----");
 
   let i =  tree.last_leaf_index();
