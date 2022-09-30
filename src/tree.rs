@@ -6,7 +6,7 @@ const MAX_DEPTH: u8 = 16;
 
 #[derive(Debug)]
 pub struct HTree {
-  pub seed: u8,
+  pub seed: u16,
 
   // Binary representation of the current path
   pub path: u16,
@@ -18,7 +18,7 @@ pub struct HTree {
 }
 
 impl HTree {
-  pub fn create(depth: u8, path: u16) -> Self {
+  pub fn create(depth: u8, path: u16, seed: u16) -> Self {
     if depth > MAX_DEPTH {
       panic!("invalid depth {}", depth);
     }
@@ -26,7 +26,7 @@ impl HTree {
     println!("Target path is {:016b} ({})", path, path);
     let nodes: [u16; MAX_DEPTH as usize] = [0; MAX_DEPTH as usize];
 
-    let mut instance = Self { path, depth, nodes, seed: 0 };
+    let mut instance = Self { path, depth, nodes, seed };
 
     instance.compute_values(0);
 
@@ -38,18 +38,20 @@ impl HTree {
     let path = self.path;
 
     let mut i = index;
-    let mut prev = self.nodes[i as usize];
+    let mut prev = match index { 0 => self.seed, _ => self.nodes[(i - 1) as usize] };
     while i < depth {
-      // println!("Appending node {}", i);
       let mask = 0x01 << (depth - i) - 1;
       // println!("Node mask  is  {:016b} ({})", mask, mask);
 
-      // let direction: u8 = match path & mask { 0 => 0, _ => 1 };
+      let direction: u16 = match path & mask { 0 => 0, _ => 1 };
       // println!("Node direction is  {}", direction);
 
-      let value = (path & mask) | prev;
+      // Our simple hash function
+      let value = (path & mask) + prev + direction;
 
       self.nodes[i as usize] = value;
+
+      println!("Appending node {:2}; prev = {:2}; value = {:2}", i, prev, value);
 
       prev = value;
 
