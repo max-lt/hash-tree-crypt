@@ -4,7 +4,7 @@ use tree::HTree;
 
 fn main() {
   println!("Hello, world!");
-  let mut tree: HTree = HTree::create(16, 0);
+  let mut tree: HTree = HTree::create(16, 0, 0);
 
   println!("{:?}", tree);
   println!("----");
@@ -23,4 +23,8 @@ fn main() {
   tree.goto(12);
   println!("----");
   tree.goto(17);
+  println!("----");
+  tree.goto(12);
+  println!("----");
+  tree.goto(7);
 }
