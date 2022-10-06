@@ -1,5 +1,8 @@
 use super::hasher::hash;
 
+use std::io::Read;
+use std::io::Result;
+
 const MAX_DEPTH: u8 = 16;
 
 #[derive(Debug)]
@@ -12,7 +15,10 @@ pub struct HTree {
   // Max depth must be 16
   pub depth: u8,
 
-  pub nodes: [[u8; 20]; MAX_DEPTH as usize]
+  pub nodes: [[u8; 20]; MAX_DEPTH as usize],
+
+  // Read offset
+  offset: usize
 }
 
 impl HTree {
@@ -24,7 +30,7 @@ impl HTree {
     println!("Target path is {:016b} ({})", path, path);
     let nodes: [[u8; 20]; MAX_DEPTH as usize] = [[0; 20]; MAX_DEPTH as usize];
 
-    let mut instance = Self { path, depth, nodes, seed };
+    let mut instance = Self { path, depth, nodes, seed, offset: 0 };
 
     instance.compute_values(0);
 
@@ -99,5 +105,32 @@ impl HTree {
 
     // Computing values
     self.compute_values(n);
+  }
+}
+
+impl Read for HTree {
+  fn read(&mut self, buffer: &mut [u8]) -> Result<usize> {
+    let node = self.nodes[(self.depth - 1) as usize];
+    let nlen = node.len();
+    let blen = buffer.len();
+
+    println!("Reading node {} {:x?} ({} / {}) from offset {}", self.depth - 1, node, nlen, blen, self.offset);
+
+    let len = if blen < nlen { blen } else { nlen };
+    
+    buffer[0..len - self.offset].copy_from_slice(&node[self.offset..len]);
+
+    // If buf was too small to be filled with current node value
+    if len != nlen {
+      self.offset = len;
+      println!("Set offset to {}", self.offset);
+    }
+    // else we go to next node
+    else {
+      self.goto(self.path + 1);
+      self.offset = 0;
+    }
+
+    Ok(len)
   }
 }

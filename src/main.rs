@@ -67,7 +67,7 @@ fn main() {
 
   println!("{:?} {:?}", op, source);
 
-  let mut mask_generator = xor_reader::XKey::new(0x82);
+  let mut mask_generator = tree;
 
   match encrypt_file(source, dest, &mut mask_generator) {
     Ok(_) => (),
