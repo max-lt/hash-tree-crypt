@@ -27,7 +27,7 @@ impl HTree {
       panic!("invalid depth {}", depth);
     }
 
-    println!("Target path is {:016b} ({})", path, path);
+    // println!("Target path is {:016b} ({})", path, path);
     let nodes: [[u8; 20]; MAX_DEPTH as usize] = [[0; 20]; MAX_DEPTH as usize];
 
     let mut instance = Self { path, depth, nodes, seed, offset: 0 };
