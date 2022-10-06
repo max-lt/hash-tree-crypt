@@ -60,7 +60,7 @@ impl HTree {
       self.nodes[i as usize] = value;
 
       // println!("Appending node {:2}; prev  = {:02x?}", i, prev);
-      println!("Appending node {:2}; value = {:02x?}", i, value);
+      // println!("Appending node {:2}; value = {:02x?}", i, value);
 
       prev = value;
 
@@ -74,10 +74,10 @@ impl HTree {
 
   pub fn goto(&mut self, path: u16) {
     let mask = self.last_leaf_index();
-    println!("Mask is         {:016b} ({})", mask, mask);
+    // println!("Mask is         {:016b} ({})", mask, mask);
 
-    println!("Current path is {:016b} ({})", self.path, self.path);
-    println!("Target  path is {:016b} ({})", path, path);
+    // println!("Current path is {:016b} ({})", self.path, self.path);
+    // println!("Target  path is {:016b} ({})", path, path);
 
     // We do (p1 AND p2) OR (!p1 AND !p2) to get a common route
     // reprensented with 1s, the first 0 represents the first
@@ -91,14 +91,14 @@ impl HTree {
     // Note: leading zeros of !p1 and !p2 will prepend our result
     // with 1s, this is useful as we are looking for the first 0
     let common = (self.path & path) | (!self.path & !path);
-    println!("Common path  is {:016b}", common);
+    // println!("Common path  is {:016b}", common);
 
     let ones = common.leading_ones() as u8;
-    println!("Reusable path is {} of 16; useful = {}", ones, self.depth);
+    // println!("Reusable path is {} of 16; useful = {}", ones, self.depth);
     
     // We now just have to count trailing zeros 
     let n = self.depth - (16 - ones);
-    println!("Reusing {} nodes", n);
+    // println!("Reusing {} nodes", n);
 
     // Assigning new path
     self.path = path;
@@ -114,15 +114,15 @@ impl Read for HTree {
     let nlen = node.len();
     let blen = buffer.len();
 
-    println!("Reading node {} {:x?} ({} / {}) from offset {}", self.depth - 1, node, nlen, blen, self.offset);
+    let len = std::cmp::min(blen, nlen - self.offset);
 
-    let len = if blen < nlen { blen } else { nlen };
+    buffer[0..len].copy_from_slice(&node[self.offset..self.offset + len]);
     
-    buffer[0..len - self.offset].copy_from_slice(&node[self.offset..len]);
-
+    // println!("Writing buffer {:x?} ({len})", &buffer[0..len]);
+    
     // If buf was too small to be filled with current node value
-    if len != nlen {
-      self.offset = len;
+    if (self.offset + len) < nlen {
+      self.offset += len;
       println!("Set offset to {}", self.offset);
     }
     // else we go to next node
