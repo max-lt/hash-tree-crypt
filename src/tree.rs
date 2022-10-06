@@ -73,7 +73,7 @@ impl HTree {
   }
 
   pub fn goto(&mut self, path: u16) {
-    let mask = self.last_leaf_index();
+    // let mask = self.last_leaf_index();
     // println!("Mask is         {:016b} ({})", mask, mask);
 
     // println!("Current path is {:016b} ({})", self.path, self.path);
@@ -123,7 +123,7 @@ impl Read for HTree {
     // If buf was too small to be filled with current node value
     if (self.offset + len) < nlen {
       self.offset += len;
-      println!("Set offset to {}", self.offset);
+      // println!("Set offset to {}", self.offset);
     }
     // else we go to next node
     else {
