@@ -6,7 +6,7 @@ use std::io::prelude::*;
 use std::path::Path;
 use std::io::Read;
 
-const BUFFER_LEN: usize = 512;
+const BUFFER_LEN: usize = 128 * 1024;
 
 type Buffer = [u8; BUFFER_LEN];
 
@@ -21,7 +21,7 @@ pub fn encrypt_file(src: &Path, dst: &Path, mg: &mut dyn Read) -> std::io::Resul
   let mut writer = BufWriter::new(dst);
 
   loop {
-    println!("rpos {}, wpos {}", reader.stream_position()?, writer.stream_position()?);
+    // println!("rpos {}, wpos {}", reader.stream_position()?, writer.stream_position()?);
 
     let read_count = reader.read(&mut buffer)?;
     let mask_count = mask_buffer.len();
@@ -32,8 +32,10 @@ pub fn encrypt_file(src: &Path, dst: &Path, mg: &mut dyn Read) -> std::io::Resul
     
     let write_count = writer.write(&buffer[0..read_count])?;
 
-    println!("rc {}, wc {}, mc {}", read_count, write_count, mask_count);
-    println!("mb {:x?}", &mask_buffer[0..mask_count]);
+    println!("DONE FILL BUF");
+
+    // println!("rc {}, wc {}, mc {}", read_count, write_count, mask_count);
+    // println!("mb {:x?}", &mask_buffer[0..mask_count]);
     // println!("w {:x?}", buffer);
 
     if read_count != BUFFER_LEN {
