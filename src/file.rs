@@ -25,8 +25,10 @@ pub fn encrypt_file(src: &Path, dst: &Path, mg: &mut dyn Read) -> std::io::Resul
     
     mg.read_exact(&mut mask_buffer[0..read_count])?;
 
-    // XORing read and mask buffers 
-    buffer.iter_mut().zip(mask_buffer.iter()).for_each(|(x1, x2)| *x1 ^= *x2);
+    // XORing read and mask buffers
+    for i in 0..read_count {
+      buffer[i] ^= mask_buffer[i];
+    }
     
     writer.write(&buffer[0..read_count])?;
 
