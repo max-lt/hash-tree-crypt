@@ -39,18 +39,21 @@ impl HTree {
     let mut prev = match index { 0 => self.seed, _ => self.nodes[(i - 1) as usize] };
     while i < depth {
       let mask = 0x01 << (depth - i) - 1;
-      
+
+      // println!("Appending node {:2}; prev  = {:02x?}", i, prev);
+
       // Get node Direction
+      // Note: do not rotate 10, 10 left and 10 right are the same
       match path & mask {
         0 => prev.rotate_left(10), 
-        _ => prev.rotate_right(10)
+        _ => prev.reverse()
       };
 
       let value = hash(&prev);
 
       self.nodes[i as usize] = value;
 
-      // println!("Appending node {:2}; prev = {:?}; value = {:?}", i, prev, value);
+      // println!("Appending node {:2}; prev  = {:02x?}", i, prev);
       println!("Appending node {:2}; value = {:02x?}", i, value);
 
       prev = value;
