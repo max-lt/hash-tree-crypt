@@ -1,7 +1,7 @@
 clean:
 	cargo clean
 
-build:
+build: src/*
 	cargo build --release
 
 start: build
