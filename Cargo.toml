@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 rust-crypto = "0.2.36"
+debug_print = "1.0.0"
