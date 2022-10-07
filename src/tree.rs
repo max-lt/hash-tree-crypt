@@ -3,16 +3,16 @@ use super::hasher::hash;
 use std::io::Read;
 use std::io::Result;
 
-const MAX_DEPTH: u8 = 16;
+const MAX_DEPTH: u8 = 32;
 
 #[derive(Debug)]
 pub struct HTree {
   pub seed: [u8; 20],
 
   // Binary representation of the current path
-  pub path: u16,
+  pub path: u32,
 
-  // Max depth must be 16
+  // Max depth must be 32
   pub depth: u8,
 
   pub nodes: [[u8; 20]; MAX_DEPTH as usize],
@@ -22,12 +22,12 @@ pub struct HTree {
 }
 
 impl HTree {
-  pub fn create(depth: u8, path: u16, seed: [u8; 20]) -> Self {
+  pub fn create(depth: u8, path: u32, seed: [u8; 20]) -> Self {
     if depth > MAX_DEPTH {
       panic!("invalid depth {}", depth);
     }
 
-    // println!("Target path is {:016b} ({})", path, path);
+    // println!("Target path is {:032b} ({})", path, path);
     let nodes: [[u8; 20]; MAX_DEPTH as usize] = [[0; 20]; MAX_DEPTH as usize];
 
     let mut instance = Self { path, depth, nodes, seed, offset: 0 };
@@ -68,16 +68,16 @@ impl HTree {
     }
   }
 
-  pub fn last_leaf_index(&self) -> u16 {
-    return ((0xffff << self.depth) ^ 0xffff) as u16;
+  pub fn last_leaf_index(&self) -> u32 {
+    return ((0xffffffffu64 << self.depth) ^ 0xffffffffu64) as u32;
   }
 
-  pub fn goto(&mut self, path: u16) {
+  pub fn goto(&mut self, path: u32) {
     // let mask = self.last_leaf_index();
-    // println!("Mask is         {:016b} ({})", mask, mask);
+    // println!("Mask is         {:032b} ({})", mask, mask);
 
-    // println!("Current path is {:016b} ({})", self.path, self.path);
-    // println!("Target  path is {:016b} ({})", path, path);
+    // println!("Current path is {:032b} ({})", self.path, self.path);
+    // println!("Target  path is {:032b} ({})", path, path);
 
     // We do (p1 AND p2) OR (!p1 AND !p2) to get a common route
     // reprensented with 1s, the first 0 represents the first
@@ -91,13 +91,13 @@ impl HTree {
     // Note: leading zeros of !p1 and !p2 will prepend our result
     // with 1s, this is useful as we are looking for the first 0
     let common = (self.path & path) | (!self.path & !path);
-    // println!("Common path  is {:016b}", common);
+    // println!("Common path  is {:032b}", common);
 
     let ones = common.leading_ones() as u8;
-    // println!("Reusable path is {} of 16; useful = {}", ones, self.depth);
+    // println!("Reusable path is {} of {MAX_DEPTH}; useful = {}", ones, self.depth);
     
     // We now just have to count trailing zeros 
-    let n = self.depth - (16 - ones);
+    let n = self.depth - (MAX_DEPTH - ones);
     // println!("Reusing {} nodes", n);
 
     // Assigning new path
