@@ -1,21 +1,24 @@
 use super::hasher::hash;
+use debug_print::{ debug_println as debug };
 
 use std::io::Read;
 use std::io::Result;
 
-const MAX_DEPTH: u8 = 32;
+const MAX_DEPTH: usize = 32;
 
 #[derive(Debug)]
 pub struct HTree {
-  pub seed: [u8; 20],
+  seed: [u8; 20],
 
   // Binary representation of the current path
-  pub path: u32,
+  path: u32,
+
+  mask: u32,
 
   // Max depth must be 32
-  pub depth: u8,
+  depth: u8,
 
-  pub nodes: [[u8; 20]; MAX_DEPTH as usize],
+  nodes: [[u8; 20]; MAX_DEPTH],
 
   // Read offset
   offset: usize
@@ -23,14 +26,20 @@ pub struct HTree {
 
 impl HTree {
   pub fn create(depth: u8, path: u32, seed: [u8; 20]) -> Self {
-    if depth > MAX_DEPTH {
+    if depth as usize > MAX_DEPTH {
       panic!("invalid depth {}", depth);
     }
 
-    // println!("Target path is {:032b} ({})", path, path);
-    let nodes: [[u8; 20]; MAX_DEPTH as usize] = [[0; 20]; MAX_DEPTH as usize];
+    // 
+    let mask: u32 = ((0xffffffffu64 << depth) ^ 0xffffffffu64) as u32;
+    debug!("Mask is        {:032b} ({})", mask, mask);
 
-    let mut instance = Self { path, depth, nodes, seed, offset: 0 };
+    debug!("Target path is {:032b} ({})", path, path);
+    let nodes: [[u8; 20]; MAX_DEPTH] = Default::default();
+
+    debug!("Target path is ({:?})", nodes);
+
+    let mut instance = Self { path, depth, mask, nodes, seed, offset: 0 };
 
     instance.compute_values(0);
 
@@ -38,11 +47,12 @@ impl HTree {
   }
 
   fn compute_values(&mut self, index: u8) {
-    let depth = self.depth; 
+    let depth = self.depth as usize; 
     let path = self.path;
 
-    let mut i = index;
-    let mut prev = match index { 0 => self.seed, _ => self.nodes[(i - 1) as usize] };
+    let mut i = index as usize;
+    let mut prev = match index { 0 => self.seed, _ => self.nodes[i - 1] };
+
     while i < depth {
       let mask = 0x01 << (depth - i) - 1;
 
@@ -51,13 +61,13 @@ impl HTree {
       // Get node Direction
       // Note: do not rotate 10, 10 left and 10 right are the same
       match path & mask {
-        0 => prev.rotate_left(10), 
+        0 => prev.rotate_left(10),
         _ => prev.reverse()
       };
 
       let value = hash(&prev);
 
-      self.nodes[i as usize] = value;
+      self.nodes[i] = value;
 
       // println!("Appending node {:2}; prev  = {:02x?}", i, prev);
       // println!("Appending node {:2}; value = {:02x?}", i, value);
@@ -69,15 +79,12 @@ impl HTree {
   }
 
   pub fn last_leaf_index(&self) -> u32 {
-    return ((0xffffffffu64 << self.depth) ^ 0xffffffffu64) as u32;
+    return self.mask;
   }
 
-  pub fn goto(&mut self, path: u32) {
-    // let mask = self.last_leaf_index();
-    // println!("Mask is         {:032b} ({})", mask, mask);
-
-    // println!("Current path is {:032b} ({})", self.path, self.path);
-    // println!("Target  path is {:032b} ({})", path, path);
+  fn goto(&mut self, path: u32) {
+    debug!("Current path is {:032b} ({})", self.path, self.path);
+    debug!("Target  path is {:032b} ({})", path, path);
 
     // We do (p1 AND p2) OR (!p1 AND !p2) to get a common route
     // reprensented with 1s, the first 0 represents the first
@@ -91,14 +98,14 @@ impl HTree {
     // Note: leading zeros of !p1 and !p2 will prepend our result
     // with 1s, this is useful as we are looking for the first 0
     let common = (self.path & path) | (!self.path & !path);
-    // println!("Common path  is {:032b}", common);
+    debug!("Common path  is {:032b}", common);
 
-    let ones = common.leading_ones() as u8;
-    // println!("Reusable path is {} of {MAX_DEPTH}; useful = {}", ones, self.depth);
+    let ones = common.leading_ones() as usize;
+    debug!("Reusable path is {} of {MAX_DEPTH}; useful = {}", ones, self.depth);
     
     // We now just have to count trailing zeros 
-    let n = self.depth - (MAX_DEPTH - ones);
-    // println!("Reusing {} nodes", n);
+    let n = self.depth - (MAX_DEPTH - ones) as u8;
+    debug!("Reusing {} nodes", n);
 
     // Assigning new path
     self.path = path;
@@ -110,7 +117,7 @@ impl HTree {
 
 impl Read for HTree {
   fn read(&mut self, buffer: &mut [u8]) -> Result<usize> {
-    let node = self.nodes[(self.depth - 1) as usize];
+    let node = self.nodes[(self.depth - 1) as usize].to_vec();
     let nlen = node.len();
     let blen = buffer.len();
 
@@ -118,12 +125,12 @@ impl Read for HTree {
 
     buffer[0..len].copy_from_slice(&node[self.offset..self.offset + len]);
     
-    // println!("Writing buffer {:x?} ({len})", &buffer[0..len]);
+    debug!("Writing buffer {:02x?} ({len})", &buffer[0..len]);
     
     // If buf was too small to be filled with current node value
     if (self.offset + len) < nlen {
       self.offset += len;
-      // println!("Set offset to {}", self.offset);
+      debug!("Set offset to {}", self.offset);
     }
     // else we go to next node
     else {
