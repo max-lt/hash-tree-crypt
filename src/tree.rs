@@ -10,7 +10,7 @@ type Hash = [u8; HASH_SIZE];
 type NodesArray = [Hash; MAX_DEPTH];
 
 #[derive(Debug)]
-pub struct HTree {
+pub struct HashTree {
   seed: Hash,
 
   // Binary representation of the current path
@@ -27,7 +27,7 @@ pub struct HTree {
   offset: usize
 }
 
-impl HTree {
+impl HashTree {
   pub fn create(depth: u8, path: u32, seed: Hash) -> Self {
     if depth as usize > MAX_DEPTH {
       panic!("invalid depth {}", depth);
@@ -115,7 +115,7 @@ impl HTree {
   }
 }
 
-impl Read for HTree {
+impl Read for HashTree {
   fn read(&mut self, buffer: &mut [u8]) -> Result<usize> {
     let node = self.nodes[(self.depth - 1) as usize];
     let nlen = node.len();
