@@ -1,9 +1,9 @@
+use std::time::Instant;
+use std::path::Path;
 use std::fs::OpenOptions;
 use std::io::BufWriter;
 use std::io::BufReader;
 use std::io::Write;
-
-use std::path::Path;
 use std::io::Read;
 
 const BUFFER_LEN: usize = 128 * 1024;
@@ -22,6 +22,8 @@ pub fn encrypt_file(src: &Path, dst: &Path, mg: &mut dyn Read) -> std::io::Resul
 
   let mut hash_i = blake3::Hasher::new();
   let mut hash_o = blake3::Hasher::new();
+
+  let start = Instant::now();
 
   loop {
     let read_count = reader.read(&mut buffer)?;
@@ -44,7 +46,9 @@ pub fn encrypt_file(src: &Path, dst: &Path, mg: &mut dyn Read) -> std::io::Resul
     }
   }
 
-  println!("File hash {:02x?} -> {:02x?}", hash_i.finalize().to_hex(), hash_o.finalize().to_hex());
+  println!("Time {:?}", start.elapsed());
+  println!("Input  file hash {}", hash_i.finalize().to_hex());
+  println!("Output file hash {}", hash_o.finalize().to_hex());
 
   Ok(())
 }

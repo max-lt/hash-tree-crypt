@@ -4,13 +4,13 @@ mod tree;
 use std::path::Path;
 use std::env;
 use file::encrypt_file;
-use tree::HTree;
+use tree::HashTree;
 
 fn main() {
   let password = "hello world";
   let seed = <[u8; 32]>::from(blake3::hash(password.as_bytes()));
 
-  let mut tree: HTree = HTree::create(32, 0, seed);
+  let mut tree = HashTree::create(32, 0, seed);
 
   let last_leaf_index = tree.last_leaf_index() as usize;
   let max_file_size = last_leaf_index * seed.len();
