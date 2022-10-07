@@ -7,7 +7,11 @@ use file::encrypt_file;
 use tree::HashTree;
 
 fn main() {
-  let password = "hello world";
+  println!("Password: ");
+  let password = rpassword::read_password().unwrap();
+
+  println!("Password is {password}");
+
   let seed = <[u8; 32]>::from(blake3::hash(password.as_bytes()));
 
   let mut tree = HashTree::create(32, 0, seed);

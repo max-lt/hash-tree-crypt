@@ -57,7 +57,7 @@ impl HashTree {
     while i < depth {
       let mask = 0x01 << (depth - i) - 1;
 
-      // println!("Appending node {:2}; prev  = {:02x?}", i, prev);
+      debug!("Appending node {:2}; prev  = {:02x?}", i, prev);
 
       // Get node Direction, use reversed value for right node 
       match path & mask {
@@ -83,6 +83,7 @@ impl HashTree {
   }
 
   fn goto(&mut self, path: u32) {
+    debug!("Mask is         {:032b} ({})", self.mask, self.mask);
     debug!("Current path is {:032b} ({})", self.path, self.path);
     debug!("Target  path is {:032b} ({})", path, path);
 
