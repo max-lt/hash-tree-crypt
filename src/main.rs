@@ -1,16 +1,14 @@
-mod hasher;
 mod file;
 mod tree;
 
 use std::path::Path;
 use std::env;
 use file::encrypt_file;
-use hasher::hash;
 use tree::HTree;
 
 fn main() {
   let password = "hello world";
-  let seed = hash(password.as_bytes());
+  let seed = <[u8; 32]>::from(blake3::hash(password.as_bytes()));
 
   let mut tree: HTree = HTree::create(32, 0, seed);
 

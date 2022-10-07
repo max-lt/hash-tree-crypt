@@ -1,14 +1,17 @@
-use super::hasher::hash;
 use debug_print::{ debug_println as debug };
 
 use std::io::Read;
 use std::io::Result;
 
 const MAX_DEPTH: usize = 32;
+const HASH_SIZE: usize = 32;
+
+type Hash = [u8; HASH_SIZE];
+type NodesArray = [Hash; MAX_DEPTH];
 
 #[derive(Debug)]
 pub struct HTree {
-  seed: [u8; 20],
+  seed: Hash,
 
   // Binary representation of the current path
   path: u32,
@@ -18,14 +21,14 @@ pub struct HTree {
   // Max depth must be 32
   depth: u8,
 
-  nodes: [[u8; 20]; MAX_DEPTH],
+  nodes: NodesArray,
 
   // Read offset
   offset: usize
 }
 
 impl HTree {
-  pub fn create(depth: u8, path: u32, seed: [u8; 20]) -> Self {
+  pub fn create(depth: u8, path: u32, seed: Hash) -> Self {
     if depth as usize > MAX_DEPTH {
       panic!("invalid depth {}", depth);
     }
@@ -35,9 +38,7 @@ impl HTree {
     debug!("Mask is        {:032b} ({})", mask, mask);
 
     debug!("Target path is {:032b} ({})", path, path);
-    let nodes: [[u8; 20]; MAX_DEPTH] = Default::default();
-
-    debug!("Target path is ({:?})", nodes);
+    let nodes: NodesArray = Default::default();
 
     let mut instance = Self { path, depth, mask, nodes, seed, offset: 0 };
 
@@ -58,14 +59,13 @@ impl HTree {
 
       // println!("Appending node {:2}; prev  = {:02x?}", i, prev);
 
-      // Get node Direction
-      // Note: do not rotate 10, 10 left and 10 right are the same
+      // Get node Direction, use reversed value for right node 
       match path & mask {
-        0 => prev.rotate_left(10),
+        0 => (),
         _ => prev.reverse()
       };
 
-      let value = hash(&prev);
+      let value = <Hash>::from(blake3::hash(&prev));
 
       self.nodes[i] = value;
 
@@ -117,7 +117,7 @@ impl HTree {
 
 impl Read for HTree {
   fn read(&mut self, buffer: &mut [u8]) -> Result<usize> {
-    let node = self.nodes[(self.depth - 1) as usize].to_vec();
+    let node = self.nodes[(self.depth - 1) as usize];
     let nlen = node.len();
     let blen = buffer.len();
 
