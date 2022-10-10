@@ -49,12 +49,14 @@ impl HashTree {
     //   depth = 20  -> 00000000000011111111111111111111 0x000fffff 1048575
     let mask: u32 = ((0xffffffffu64 << depth) ^ 0xffffffffu64) as u32;
     debug!("Mask is        {:032b} ({})", mask, mask);
-
     debug!("Target path is {:032b} ({})", path, path);
+
+    // Initialize a Hash (32 bytes array) array of MAX_DEPTH (32) elements
     let nodes: NodesArray = [0; MAX_DEPTH].map(|_| Hash::from([0; HASH_SIZE]));
 
     let mut instance = Self { path, depth, mask, nodes, seed, offset: 0 };
 
+    // Initialize nodes
     instance.compute_values(0);
 
     return instance;
