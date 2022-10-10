@@ -29,7 +29,7 @@ pub fn encrypt_file(src: &Path, dst: &Path, mg: &mut dyn Read) -> std::io::Resul
     let read_count = reader.read(&mut buffer)?;
 
     hash_i.update(&buffer[0..read_count]);
-    
+
     mg.read_exact(&mut mask_buffer[0..read_count])?;
 
     // XORing read and mask buffers
@@ -38,7 +38,7 @@ pub fn encrypt_file(src: &Path, dst: &Path, mg: &mut dyn Read) -> std::io::Resul
     }
 
     hash_o.update(&buffer[0..read_count]);
-    
+
     writer.write(&buffer[0..read_count])?;
 
     if read_count != BUFFER_LEN {
