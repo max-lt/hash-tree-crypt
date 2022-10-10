@@ -7,25 +7,28 @@ use file::encrypt_file;
 use tree::HashTree;
 
 fn main() {
-  println!("Password: ");
+  println!("Enter encryption password: ");
   let password = rpassword::read_password().unwrap();
 
-  println!("Password is {password}");
+  println!("Verifying encryption password: ");
+  if password != rpassword::read_password().unwrap() {
+    println!("Password verification failed.");
+    return;
+  }
 
-  let seed = <[u8; 32]>::from(blake3::hash(password.as_bytes()));
+  // Seed is the hash of the password
+  let seed = blake3::hash(password.as_bytes());
 
-  let mut tree = HashTree::create(32, 0, seed);
+  // Create our tree
+  let mut tree = HashTree::create(20, 0, seed);
 
-  let last_leaf_index = tree.last_leaf_index() as usize;
-  let max_file_size = last_leaf_index * seed.len();
-  println!("Tree last leaf index: {}, max file size: {}", last_leaf_index, max_file_size);
+  println!("Tree last leaf index: {}, max file size: {}", tree.last_leaf_index(), tree.last_byte_index());
   println!("----");
 
   // ARGS
   let args: Vec<String> = env::args().collect();
-
   if args.len() != 2 {
-    println!("usage: ");
+    println!("usage: {} file", args[0]);
     return;
   }
 
@@ -51,9 +54,16 @@ fn main() {
   }
 
   // Checking if file size < pad size
+  let max_file_size = tree.last_byte_index();
   if metadata.len() > max_file_size as u64 {
     println!("Error: {:?} is too big ({} > {})", source, metadata.len(), max_file_size);
     return;
+  }
+
+  // Prevent reading big file in debug mode
+  #[cfg(debug_assertions)]
+  if metadata.len() > 1024*1024 {
+    panic!("You don't want to print debug logs for a such large file");
   }
 
   match encrypt_file(source, dest, &mut tree) {
