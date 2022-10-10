@@ -44,8 +44,8 @@ impl HashTree {
     // 2 ^ depth without pow; mask equals last leaf index
     //
     // Examples
-    //   depth = 7   -> 00000000000000000000000001111111 0x0000007f 127  
-    //   depth = 10  -> 00000000000000000000001111111111 0x000003ff 1023  
+    //   depth = 7   -> 00000000000000000000000001111111 0x0000007f 127
+    //   depth = 10  -> 00000000000000000000001111111111 0x000003ff 1023
     //   depth = 20  -> 00000000000011111111111111111111 0x000fffff 1048575
     let mask: u32 = ((0xffffffffu64 << depth) ^ 0xffffffffu64) as u32;
     debug!("Mask is        {:032b} ({})", mask, mask);
@@ -66,7 +66,7 @@ impl HashTree {
   ///
   /// * `index` - The node from which to start (0 to initialize all nodes)
   fn compute_values(&mut self, index: u8) {
-    let depth = self.depth as usize; 
+    let depth = self.depth as usize;
     let path = self.path;
 
     let mut i = index as usize;
@@ -79,7 +79,7 @@ impl HashTree {
 
       let mut input = *prev.as_bytes();
 
-      // Get node Direction, use reversed value for right node 
+      // Get node Direction, use reversed value for right node
       match path & mask {
         0 => (),
         _ => input.reverse()
@@ -134,7 +134,7 @@ impl HashTree {
 
     let ones = common.leading_ones() as usize;
     debug!("Reusable path is {} of {MAX_DEPTH}; useful = {}", ones, self.depth);
-    
+
     // We now just have to caluculate first 0 index (first forking node)
     let n = self.depth - (MAX_DEPTH - ones) as u8;
     debug!("Reusing {} nodes", n);
@@ -156,7 +156,7 @@ impl Read for HashTree {
     let len = std::cmp::min(blen, nlen - self.offset);
 
     buffer[0..len].copy_from_slice(&node[self.offset..self.offset + len]);
-        
+
     // If buf was too small to be filled with current node value
     if (self.offset + len) < nlen {
       self.offset += len;
