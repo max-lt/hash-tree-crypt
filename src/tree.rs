@@ -1,4 +1,4 @@
-use debug_print::{ debug_println as debug };
+use debug_print::debug_println as debug;
 use blake3::Hash;
 
 use std::io::Read;
@@ -121,7 +121,7 @@ impl HashTree {
     debug!("Target  path is {:032b} ({})", path, path);
 
     // We do (p1 AND p2) OR (!p1 AND !p2) to get a common route
-    // reprensented with 1s, the first 0 represents the first
+    // represented with 1s, the first 0 represents the first
     // forking node
     //
     // Examples
@@ -137,7 +137,7 @@ impl HashTree {
     let ones = common.leading_ones() as usize;
     debug!("Reusable path is {} of {MAX_DEPTH}; useful = {}", ones, self.depth);
 
-    // We now just have to caluculate first 0 index (first forking node)
+    // We now just have to calculate first 0 index (first forking node)
     let n = self.depth - (MAX_DEPTH - ones) as u8;
     debug!("Reusing {} nodes", n);
 

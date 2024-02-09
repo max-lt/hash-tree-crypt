@@ -1,12 +1,58 @@
 mod file;
 mod tree;
+mod args;
 
-use std::path::Path;
-use std::env;
+use std::path::PathBuf;
 use file::encrypt_file;
 use tree::HashTree;
 
+use crate::args::Args;
+
 fn main() {
+  let matches = args::cli().get_matches();
+
+  // Print version and exit
+  if matches.get_flag(Args::Version.into()) {
+    println!("hash-tree-crypt v{}", std::env!("CARGO_PKG_VERSION"));
+    return;
+  }
+  
+  let source = match matches.get_one::<PathBuf>(Args::Input.into()) {
+    Some(p) => p.to_owned(),
+    None => {
+      println!("Error: missing input file");
+      return;
+    }
+  };
+
+  let mut user_set_output = true;
+  let dest = match matches.get_one::<PathBuf>(Args::Output.into()) {
+    Some(p) => p.to_owned(),
+    None => {
+      user_set_output = false;
+      let mut p = source.clone();
+      p.set_file_name(p.file_name().unwrap().to_str().unwrap().to_string() + ".htcrypt");
+      p.to_owned()
+    }
+  };
+
+  // If dest is auto generated, we ensure we don't overwrite an existing file
+  let dest = match !user_set_output && dest.exists() {
+    false => dest,
+    true => {
+      let mut dest = dest.clone();
+      let time = chrono::Local::now().timestamp_millis().to_string();
+      dest.set_extension(time + ".htcrypt" );
+      dest
+    },
+  };
+
+  println!("Input file:  {:?}", source);
+  println!("Output file: {:?}", dest);
+
+  let source = source.as_path();
+  let dest = dest.as_path();
+
   println!("Enter encryption password: ");
   let password = rpassword::read_password().unwrap();
 
@@ -25,24 +71,11 @@ fn main() {
   println!("Tree last leaf index: {}, max file size: {}", tree.last_leaf_index(), tree.last_byte_index());
   println!("----");
 
-  // ARGS
-  let args: Vec<String> = env::args().collect();
-  if args.len() != 2 {
-    println!("usage: {} file", args[0]);
-    return;
-  }
-
-  let file_path = &args[1];
-
-  let source = Path::new(file_path);
-  let dest = file_path.to_string() + ".tmp";
-  let dest = Path::new(&dest);
-
   // Get file metadata
   let metadata = match std::fs::metadata(source) {
     Ok(m) => m,
     Err(reason) => {
-      println!("Error while checking {}: {}", file_path, reason);
+      println!("Error while checking {:?}: {}", source, reason);
       return;
     }
   };
@@ -74,13 +107,6 @@ fn main() {
     }
   }
 
-  match std::fs::rename(dest, source) {
-    Ok(_) => (),
-    Err(reason) => {
-      println!("Error while renaming {:?}: {}", source, reason);
-      return;
-    }
-  }
-
-  println!("done");
+  println!("File encrypted successfully");
+  println!("To reverse the process, run the same command on the encrypted file");
 }
