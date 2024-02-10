@@ -13,15 +13,19 @@ const BUFFER_LEN: usize = 128 * 1024;
 type Buffer = [u8; BUFFER_LEN];
 
 pub fn encrypt_file(src: &Path, dst: &Path, mg: &mut dyn Read) -> std::io::Result<()> {
-  let mut buffer: Buffer = [0; BUFFER_LEN];
-  let mut mask_buffer: Buffer = [0; BUFFER_LEN];
-
   let src = OpenOptions::new().read(true).open(src)?;
   let dst = OpenOptions::new().read(true).write(true).create(true).open(dst)?;
 
-  let mut reader = BufReader::new(src);
-  let mut writer = BufWriter::new(dst);
+  let reader = BufReader::new(src);
+  let writer = BufWriter::new(dst);
 
+  encrypt_stream(reader, writer, mg)
+}
+
+pub fn encrypt_stream<I: Read, O: Write>(mut reader: BufReader<I>, mut writer: BufWriter<O>, mg: &mut dyn Read) -> std::io::Result<()> {
+  let mut buffer: Buffer = [0; BUFFER_LEN];
+  let mut mask_buffer: Buffer = [0; BUFFER_LEN];
+  
   let mut hash_i = blake3::Hasher::new();
   let mut hash_o = blake3::Hasher::new();
 

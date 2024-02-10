@@ -2,12 +2,10 @@ mod file;
 mod tree;
 mod args;
 
-use std::path::PathBuf;
-use file::encrypt_file;
-use tree::HashTree;
+use std::{fs::OpenOptions, io::BufWriter, path::PathBuf};
 use log::{info, error};
 
-use crate::args::Args;
+use crate::{args::Args, file::encrypt_stream};
 
 fn main() {
   let matches = args::cli().get_matches();
@@ -39,57 +37,35 @@ fn main() {
     }
   };
 
-  let mut user_set_output = true;
-  let dest = match matches.get_one::<PathBuf>(Args::Output.into()) {
-    Some(p) => p.to_owned(),
-    None => {
-      user_set_output = false;
-      let mut p = source.clone();
-      p.set_file_name(p.file_name().unwrap().to_str().unwrap().to_string() + ".htcrypt");
-      p.to_owned()
-    }
-  };
+  // Checking input file
+  let metadata = {
+    // Get file metadata
+    let metadata = match std::fs::metadata(&source) {
+      Ok(m) => m,
+      Err(reason) => {
+        error!("Error while checking {:?}: {}", source, reason);
+        return;
+      }
+    };
 
-  // If dest is auto generated, we ensure we don't overwrite an existing file
-  let dest = match !user_set_output && dest.exists() {
-    false => dest,
-    true => {
-      let mut dest = dest.clone();
-      let time = chrono::Local::now().timestamp_millis().to_string();
-      dest.set_extension(time + ".htcrypt" );
-      dest
-    },
-  };
-
-  info!("Input file:  {:?}", source);
-  info!("Output file: {:?}", dest);
-
-  let source = source.as_path();
-  let dest = dest.as_path();
-
-  // Get file metadata
-  let metadata = match std::fs::metadata(source) {
-    Ok(m) => m,
-    Err(reason) => {
-      error!("Error while checking {:?}: {}", source, reason);
+    // Checking if file
+    if !metadata.is_file() {
+      error!("Error: {:?} is not a file", source);
       return;
     }
+
+    // Prevent reading big file in debug mode
+    if log::log_enabled!(log::Level::Debug) {
+      if metadata.len() > 1024*1024 {
+        error!("You don't want to print debug logs for a such large file{}", if log_debug { "" } else { " (RUST_LOG=debug)" });
+        return;
+      }
+    }
+
+    metadata
   };
 
-  // Checking if file
-  if !metadata.is_file() {
-    error!("Error: {:?} is not a file", source);
-    return;
-  }
-
-  // Prevent reading big file in debug mode
-  if log::log_enabled!(log::Level::Debug) {
-    if metadata.len() > 1024*1024 {
-      error!("You don't want to print debug logs for a such large file{}", if log_debug { "" } else { " (RUST_LOG=debug)" });
-      return;
-    }
-  }
-
+  // Initializing tree
   let mut tree = {
     eprint!("Enter encryption password: ");
     let password = rpassword::read_password().unwrap();
@@ -104,19 +80,87 @@ fn main() {
     let seed = blake3::hash(password.as_bytes());
 
     // Create our tree
-    HashTree::create(20, 0, seed)
+    tree::HashTree::create(20, 0, seed)
   };
 
-  // Checking if file size < pad size
+  // Check if file size < pad size
   let max_file_size = tree.last_byte_index();
   if metadata.len() > max_file_size as u64 {
     error!("Error: {:?} is too big ({} > {})", source, metadata.len(), max_file_size);
     return;
   }
 
+  info!("Input file:  {}", source.to_str().unwrap());
+
+  // Create writer
+  let writer: BufWriter<Box<dyn std::io::Write>> = {
+
+    let dest = matches.get_one::<PathBuf>(Args::Output.into());
+
+    // Output is not a tty
+    let output_stream = atty::isnt(atty::Stream::Stdout);
+    
+    let user_set_output = dest.is_some();
+
+    // If output is not a tty and no output file is set, we output to stdout
+    match output_stream && !user_set_output {
+      // Output is stdout
+      true => {
+        info!("Output file: stdout");
+
+        BufWriter::new(Box::new(std::io::stdout()))
+      },
+      // Output is a file
+      false => {
+        let dest = match dest {
+          Some(p) => p.to_owned(),
+          None => {
+            let mut p = source.clone();
+            p.set_file_name(p.file_name().unwrap().to_str().unwrap().to_string() + ".htcrypt");
+            p.to_owned()
+          }
+        };
+
+        // If dest is auto generated, we ensure we don't overwrite an existing file
+        let dest = match !user_set_output && dest.exists() {
+          false => dest,
+          true => {
+            let mut dest = dest;
+            let time = chrono::Local::now().timestamp_millis().to_string();
+            dest.set_extension(time + ".htcrypt" );
+            dest
+          },
+        };
+
+        info!("Output file: {}", dest.to_str().unwrap());
+
+        match OpenOptions::new().read(true).write(true).create(true).open(&dest) {
+            Ok(file) => BufWriter::new(Box::new(file)),
+            Err(reason) => {
+              error!("Error while opening {:?}: {}", dest, reason);
+              return;
+            }
+          }
+        }
+      }
+  };
+
+  // Open input file
+  let reader = {
+    let source = match OpenOptions::new().read(true).open(&source) {
+      Ok(f) => f,
+      Err(reason) => {
+        error!("Error while opening {:?}: {}", source, reason);
+        return;
+      }
+    };
+
+    std::io::BufReader::new(source)
+  };
+
   info!("Tree: last leaf index: {}, max file size: {}", tree.last_leaf_index(), tree.last_byte_index());
 
-  match encrypt_file(source, dest, &mut tree) {
+  match encrypt_stream(reader, writer, &mut tree) {
     Ok(_) => (),
     Err(reason) => {
       error!("Error while reading {:?}: {}", source, reason);
