@@ -1,4 +1,5 @@
-use debug_print::debug_println as debug;
+
+use log::debug;
 use blake3::Hash;
 
 use std::io::Read;
@@ -77,7 +78,7 @@ impl HashTree {
     while i < depth {
       let mask = 0x01 << (depth - i) - 1;
 
-      debug!("Appending node {:2};  prev = {:02x?}", i, prev);
+      debug!("Appending node {:2};  prev =   {:02x?}", i, prev);
 
       let mut input = *prev.as_bytes();
 
@@ -91,8 +92,8 @@ impl HashTree {
 
       self.nodes[i] = value;
 
-      debug!("Appending node {:2}; input =  {}({:02x?})", i,  match path & mask { 0 =>  "LFT", _ => "RGT" }, blake3::Hash::from(input).to_hex());
-      debug!("Appending node {:2}; value = {:02x?}", i, value);
+      debug!("Appending node {:2}; input =  {}({:02x?})", i,  match path & mask { 0 =>  " Left", _ => "Right" }, blake3::Hash::from(input).to_hex());
+      debug!("Appending node {:2}; value =   {:02x?}", i, value);
 
       prev = value;
 

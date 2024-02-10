@@ -1,6 +1,7 @@
 use clap::{Id, Arg, ArgAction, Command, value_parser};
 
 pub (crate) enum Args {
+  Debug,
   Input,
   Output,
   Version
@@ -9,6 +10,7 @@ pub (crate) enum Args {
 impl Into<Id> for Args {
   fn into(self) -> Id {
     match self {
+      Args::Debug => Id::from("debug"),
       Args::Input => Id::from("input"),
       Args::Output => Id::from("output"),
       Args::Version => Id::from("version")
@@ -19,6 +21,7 @@ impl Into<Id> for Args {
 impl Into<&'static str> for Args {
   fn into(self) -> &'static str {
     match self {
+      Args::Debug => "debug",
       Args::Input => "input",
       Args::Output => "output",
       Args::Version => "version"
@@ -28,7 +31,6 @@ impl Into<&'static str> for Args {
 
 pub (crate) fn cli() -> Command {
   Command::new("hash-tree-crypt")
-    .version(std::env!("CARGO_PKG_VERSION"))
     .about("Encrypts a file using a hash tree")
     .arg(Arg::new(Args::Input)
       .short('i')
@@ -49,9 +51,13 @@ pub (crate) fn cli() -> Command {
       .required(false)
     )
     .arg(Arg::new(Args::Version)
-      .short('v')
       .long("version")
       .help("Prints version information")
+      .action(ArgAction::SetTrue)
+    )
+    .arg(Arg::new(Args::Debug)
+      .long("debug")
+      .help("Prints debug information")
       .action(ArgAction::SetTrue)
     )
 }

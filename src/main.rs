@@ -5,6 +5,7 @@ mod args;
 use std::path::PathBuf;
 use file::encrypt_file;
 use tree::HashTree;
+use log::{info, error};
 
 use crate::args::Args;
 
@@ -16,11 +17,24 @@ fn main() {
     println!("hash-tree-crypt v{}", std::env!("CARGO_PKG_VERSION"));
     return;
   }
+
+  let log_debug = matches.get_flag(Args::Debug.into());
+
+  // Id debug flag is set, we set the log level to debug
+  if log_debug {
+    std::env::set_var("RUST_LOG", "debug");
+  }
+  // Else if no log level is set, we set it to info
+  else if std::env::var("RUST_LOG").is_err() {
+    std::env::set_var("RUST_LOG", "info");
+  }
+
+  env_logger::init();
   
   let source = match matches.get_one::<PathBuf>(Args::Input.into()) {
     Some(p) => p.to_owned(),
     None => {
-      println!("Error: missing input file");
+      error!("Error: missing input file");
       return;
     }
   };
@@ -47,66 +61,69 @@ fn main() {
     },
   };
 
-  println!("Input file:  {:?}", source);
-  println!("Output file: {:?}", dest);
+  info!("Input file:  {:?}", source);
+  info!("Output file: {:?}", dest);
 
   let source = source.as_path();
   let dest = dest.as_path();
-
-  println!("Enter encryption password: ");
-  let password = rpassword::read_password().unwrap();
-
-  println!("Verifying encryption password: ");
-  if password != rpassword::read_password().unwrap() {
-    println!("Password verification failed.");
-    return;
-  }
-
-  // Seed is the hash of the password
-  let seed = blake3::hash(password.as_bytes());
-
-  // Create our tree
-  let mut tree = HashTree::create(20, 0, seed);
-
-  println!("Tree last leaf index: {}, max file size: {}", tree.last_leaf_index(), tree.last_byte_index());
-  println!("----");
 
   // Get file metadata
   let metadata = match std::fs::metadata(source) {
     Ok(m) => m,
     Err(reason) => {
-      println!("Error while checking {:?}: {}", source, reason);
+      error!("Error while checking {:?}: {}", source, reason);
       return;
     }
   };
 
   // Checking if file
   if !metadata.is_file() {
-    println!("Error: {:?} is not a file", source);
-    return;
-  }
-
-  // Checking if file size < pad size
-  let max_file_size = tree.last_byte_index();
-  if metadata.len() > max_file_size as u64 {
-    println!("Error: {:?} is too big ({} > {})", source, metadata.len(), max_file_size);
+    error!("Error: {:?} is not a file", source);
     return;
   }
 
   // Prevent reading big file in debug mode
-  #[cfg(debug_assertions)]
-  if metadata.len() > 1024*1024 {
-    panic!("You don't want to print debug logs for a such large file");
-  }
-
-  match encrypt_file(source, dest, &mut tree) {
-    Ok(_) => (),
-    Err(reason) => {
-      println!("Error while reading {:?}: {}", source, reason);
+  if log::log_enabled!(log::Level::Debug) {
+    if metadata.len() > 1024*1024 {
+      error!("You don't want to print debug logs for a such large file{}", if log_debug { "" } else { " (RUST_LOG=debug)" });
       return;
     }
   }
 
-  println!("File encrypted successfully");
-  println!("To reverse the process, run the same command on the encrypted file");
+  let mut tree = {
+    eprint!("Enter encryption password: ");
+    let password = rpassword::read_password().unwrap();
+
+    eprint!("Verifying encryption password: ");
+    if password != rpassword::read_password().unwrap() {
+      error!("Password verification failed.");
+      return;
+    }
+
+    // Seed is the hash of the password
+    let seed = blake3::hash(password.as_bytes());
+
+    // Create our tree
+    HashTree::create(20, 0, seed)
+  };
+
+  // Checking if file size < pad size
+  let max_file_size = tree.last_byte_index();
+  if metadata.len() > max_file_size as u64 {
+    error!("Error: {:?} is too big ({} > {})", source, metadata.len(), max_file_size);
+    return;
+  }
+
+  info!("Tree: last leaf index: {}, max file size: {}", tree.last_leaf_index(), tree.last_byte_index());
+
+  match encrypt_file(source, dest, &mut tree) {
+    Ok(_) => (),
+    Err(reason) => {
+      error!("Error while reading {:?}: {}", source, reason);
+      return;
+    }
+  }
+
+  info!("File encrypted successfully");
+  info!("To reverse the process, run the same command on the encrypted file");
 }

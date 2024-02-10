@@ -6,6 +6,8 @@ use std::io::BufReader;
 use std::io::Write;
 use std::io::Read;
 
+use log::info;
+
 const BUFFER_LEN: usize = 128 * 1024;
 
 type Buffer = [u8; BUFFER_LEN];
@@ -46,9 +48,9 @@ pub fn encrypt_file(src: &Path, dst: &Path, mg: &mut dyn Read) -> std::io::Resul
     }
   }
 
-  println!("Time {:?}", start.elapsed());
-  println!("Input  file hash {}", hash_i.finalize().to_hex());
-  println!("Output file hash {}", hash_o.finalize().to_hex());
+  info!("Time {:?}", start.elapsed());
+  info!("Input  file hash {}", hash_i.finalize().to_hex());
+  info!("Output file hash {}", hash_o.finalize().to_hex());
 
   Ok(())
 }
