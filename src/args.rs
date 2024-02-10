@@ -29,17 +29,23 @@ impl Into<&'static str> for Args {
   }
 }
 
-pub (crate) fn cli() -> Command {
-  Command::new("hash-tree-crypt")
-    .about("Encrypts a file using a hash tree")
-    .arg(Arg::new(Args::Input)
+pub (crate) fn cli(stdin_isnt_tty: bool) -> Command {
+  let input_arg = Arg::new(Args::Input)
       .short('i')
       .long("input")
       .value_name("FILE")
       .help("The file to encrypt (or decrypt)")
       .value_parser(value_parser!(std::path::PathBuf)) 
-      .value_hint(clap::ValueHint::FilePath)
-      .required_unless_present(Args::Version)
+      .value_hint(clap::ValueHint::FilePath);
+
+  Command::new("hash-tree-crypt")
+    .about("Encrypts a file using a hash tree")
+    .arg(
+      if stdin_isnt_tty {
+        input_arg.required(false)
+      } else {
+        input_arg.required_unless_present(Args::Version)
+      }
     )
     .arg(Arg::new(Args::Output)
       .short('o')
