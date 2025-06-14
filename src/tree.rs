@@ -121,25 +121,24 @@ impl HashTree {
     debug!("Current path is {:032b} ({})", self.path, self.path);
     debug!("Target  path is {:032b} ({})", path, path);
 
-    // We do (p1 AND p2) OR (!p1 AND !p2) to get a common route
-    // represented with 1s, the first 0 represents the first
-    // forking node
+    // We do (p1 XOR p2) to get a common route represented
+    // with 0s, the first 1 represents the first forking node
     //
     // Examples
-    //   (000 AND 001) OR (111 AND 110) = 110
-    //   (001 AND 101) OR (110 AND 010) = 011
-    //   (101 AND 111) OR (010 AND 000) = 101
+    //   (000 XOR 001) = 001
+    //   (001 XOR 101) = 100
+    //   (101 XOR 111) = 010
     //
-    // Note: leading zeros of !p1 and !p2 will prepend our result
-    // with 1s, this is useful as we are looking for the first 0
-    let common = (self.path & path) | (!self.path & !path);
+    // Note: leading zeros of (p1 XOR p2) will prepend our result
+    // with 0s, this is useful as we are looking for the first 1
+    let common = self.path ^ path;
     debug!("Common path  is {:032b}", common);
 
-    let ones = common.leading_ones() as usize;
-    debug!("Reusable path is {} of {MAX_DEPTH}; useful = {}", ones, self.depth);
+    let zeros = common.leading_zeros() as usize;
+    debug!("Reusable path is {} of {MAX_DEPTH}; useful = {}", zeros, self.depth);
 
-    // We now just have to calculate first 0 index (first forking node)
-    let n = self.depth - (MAX_DEPTH - ones) as u8;
+    // We now just have to calculate first 1 index (first forking node)
+    let n = self.depth - (MAX_DEPTH - zeros) as u8;
     debug!("Reusing {} nodes", n);
 
     // Assigning new path
